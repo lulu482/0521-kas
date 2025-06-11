@@ -1,0 +1,46 @@
+fastqc -t 5  ~/yzy/yzy_KAS/raw_data/*.fq.gz  -o ~/yzy/yzy_KAS/raw_data_fastqc
+multiqc .
+
+trim_galore -q 25 --phred33 --length 35 -e 0.1 --stringency 4 --paired  -o ../clean_data/     file.R1.fastq.gz   file.R2.fastq.gz
+fastqc -t 5  ~/yzy/yzy_KAS/clean_data/*.fq.gz  -o ~/yzy/yzy_KAS/clean_data_fastqc
+multiqc .
+
+ls ~/yzy/yzy_KAS/clean_data/*_1.fq.gz > 1
+ls ~/yzy/yzy_KAS/clean_data/*_2.fq.gz > 2
+ls ~/yzy/yzy_KAS/clean_data/*_2.fq.gz |cut -d"/" -f 7|cut -d"_" -f 1  > 0
+paste 0 1 2  > config.clean  
+
+build bowtie2.sh
+  bowtie2_index=~/yzy/yzy_KAS/ref/Bowtie2_Index/K12/ecoli
+  cat config.clean |while read id;
+  do echo $id
+  arr=($id)
+  fq2=${arr[2]}
+  fq1=${arr[1]}
+  sample=${arr[0]}
+  bowtie2 -p 10  --very-sensitive  -x  $bowtie2_index -1 $fq1 -2 $fq2 | samtools sort -O bam  -@ 5 -o - > ${sample}.raw.bam
+  samtools index ${sample}.raw.bam
+  bedtools bamtobed -i ${sample}.raw.bam  > ${sample}.raw.bed
+  samtools flagstat ${sample}.raw.bam  > ${sample}.raw.stat
+  done
+bash bowtie2.sh
+
+build sam.sh
+  #!/bin/bash
+  cat config.clean|  while read id;
+  do echo $id
+  arr=($id)
+  fq2=${arr[2]}
+  fq1=${arr[1]}
+  sample=${arr[0]}
+  sambamba markdup --overflow-list-size 600000  --tmpdir='./'  -r ${sample}.raw.bam  ${sample}.rmdup.bam
+  samtools index   ${sample}.rmdup.bam
+  samtools flagstat  ${sample}.rmdup.bam > ${sample}.rmdup.stat
+  samtools view  -h  -f 2 -q 20  ${sample}.rmdup.bam |samtools sort  -O bam  -@ 5 -o - > ${sample}.last.bam
+  samtools index   ${sample}.last.bam
+  samtools flagstat  ${sample}.last.bam > ${sample}.last.stat
+  bedtools bamtobed -i ${sample}.last.bam  > ${sample}.bed
+  done
+bash sam.sh
+
+macs2 callpeak -t merge_IP.bed  -c merge_input.bed --format BED -g 4.6e6 -n KASpeaks -B --keep-dup all -q 0.05 --outdir ./peaks
