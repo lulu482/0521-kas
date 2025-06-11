@@ -1,0 +1,55 @@
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+.libPaths()[1]
+my_lib_path = .libPaths()[1]
+BiocManager::install(c('Rsubread'), lib=my_lib_path)
+BiocManager::install(c('DESeq2'), lib=my_lib_path)
+BiocManager::install(c('tximport'), lib=my_lib_path)
+BiocManager::install(c("rhdf5"), lib=my_lib_path)
+BiocManager::install(c("BSgenome"), lib=my_lib_path)
+BiocManager::install(c("GenomicFeatures"), lib=my_lib_path)
+BiocManager::install(c('apeglm'), lib=my_lib_path)
+BiocManager::install(c('EnhancedVolcano'), lib=my_lib_path)
+BiocManager::install(c("Matrix"), lib=my_lib_path)
+BiocManager::install(c('ensembldb'), lib=my_lib_path)
+BiocManager::install(c("AnnotationDbi"), lib=my_lib_path)
+BiocManager::install(c("org.EcK12.eg.db"), lib=my_lib_path)
+install.packages(c("readxl"), lib=my_lib_path)
+install.packages(c("openxlsx"), lib=my_lib_path)
+install.packages(c("stringr"), lib=my_lib_path)
+BiocManager::install("edgeR", lib = my_lib_path)
+BiocManager::install("ChIPseeker")
+BiocManager::install("rtracklayer")
+
+library(rtracklayer)
+library(ChIPseeker)
+library(GenomicFeatures)
+library(Rsubread)
+library(DESeq2)
+library(tximport)
+library(rhdf5)
+library(EnhancedVolcano)
+library(apeglm)
+library(Matrix)
+library(ensembldb)
+library(AnnotationDbi)
+library(org.EcK12.eg.db)
+library(readxl)
+library(openxlsx)
+library(stringr)
+library(edgeR)
+
+
+peaks <- import("D:/毕设/数据处理/测序结果/peaks_bowtie2/Nor2_1_summits.bed", format = "BED")
+file_path <- "D:/毕设/数据处理/测序结果/peaks_bowtie2/Nor2_1_summits.bed"
+file.exists(file_path)
+genes <- import("D:/毕设/数据处理/BW25113--ncbi_dataset/ncbi_dataset/data/GCA_000750555.1/genomic.gff", format = "gff", feature.type = "gene")
+
+
+txdb <- makeTxDbFromGFF("D:/毕设/数据处理/BW25113--ncbi_dataset/ncbi_dataset/data/GCA_000750555.1/genomic.gff")
+peak_anno <- annotatePeak(peaks, tssRegion = c(-70, 50), TxDb = txdb,level = "gene")              
+
+plotAnnoPie(peak_anno)
+plotDistToTSS(peak_anno)
+write.csv(as.data.frame(peak_anno), "nor2_1.csv") 
